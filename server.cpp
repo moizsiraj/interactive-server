@@ -9,6 +9,7 @@
 #include <ctime>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 using namespace std;
 
@@ -42,8 +43,7 @@ void *client(void *ptr);
 void *inputHandler(void *ptr);
 
 bool getFirstNumber;
-std::string list[10][6];
-int clientList[10][3];
+std::string list[20][6];
 int write2CH[2];
 int write2CON[2];
 int currentClient = -1;
@@ -57,6 +57,15 @@ bool divZero = false;
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
 
+struct clients {
+    int clientID = -1;
+    int readingEnd = -1;
+    int writingEnd = -1;
+    std::string ip;
+};
+
+struct clients clientsList[10];
+
 int main() {
 
     pthread_t inputThread;
@@ -65,16 +74,20 @@ int main() {
     createSock();
     listen(sock, 5);
     inputID = pthread_create(&inputThread, nullptr, connection, (void *) nullptr);
+    struct sockaddr_in addr;
+    socklen_t client_addr_size = sizeof(struct sockaddr_in);
 
     while (true) {
-        msgsock = accept(sock, 0, 0);
+        msgsock = accept(sock, (struct sockaddr *) &addr, &client_addr_size);
         if (msgsock != -1) {
             currentClient++;
             int checkPipe = pipe(write2CH);
             int checkPipe2 = pipe(write2CON);
-            clientList[currentClient][0] = currentClient + 1;
-            clientList[currentClient][1] = write2CH[1];//writing end
-            clientList[currentClient][2] = write2CON[0];//reading end
+
+            clientsList[currentClient].clientID = currentClient + 1;
+            clientsList[currentClient].readingEnd = write2CON[0];
+            clientsList[currentClient].writingEnd = write2CH[1];
+            clientsList->ip = inet_ntoa(addr.sin_addr);
 
             int clientHandlerPID = fork();
 
@@ -532,7 +545,7 @@ void *client(void *ptr) {
                 print.append("\n");
                 int count = sprintf(output, "%s", print.c_str());
                 for (int i = 0; i <= currentClient; ++i) {
-                    write(clientList[i][1], output, count);
+                    write(clientsList[i].writingEnd, output, count);
                 }
             } else if (operation == 2) {
                 char output[1000];
@@ -540,8 +553,8 @@ void *client(void *ptr) {
                 int currentPosition = 0;
                 if (currentClient >= 0) {
                     for (int i = 0; i <= currentClient; i++) {
-                        write(clientList[i][1], "list ", 5);
-                        int count = read(clientList[i][2], input, 500);//B3
+                        write(clientsList[i].writingEnd, "list ", 5);
+                        int count = read(clientsList[i].readingEnd, input, 500);//B3
                         sprintf(&output[currentPosition], "%s", input);
                         currentPosition = currentPosition + count;
                     }
