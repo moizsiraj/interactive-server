@@ -536,18 +536,22 @@ void *client(void *ptr) {
             if (operation == -1) {
                 write(STDOUT_FILENO, "Invalid Command\n", 16);
             } else if (operation == 1) {
-                char output[500];
-                std::string print;
-                print.append("print2all Message from server: ");
-                token = strtok(nullptr, " ");
-                while (token != nullptr) {
-                    print.append(token).append(" ");
+                if (currentClient == -1) {
+                    write(STDOUT_FILENO, "No Client Connected\n", 20);
+                } else {
+                    char output[500];
+                    std::string print;
+                    print.append("print2all Message from server: ");
                     token = strtok(nullptr, " ");
-                }
-                print.append("\n");
-                int count = sprintf(output, "%s", print.c_str());
-                for (int i = 0; i <= currentClient; ++i) {
-                    write(clientsList[i].writingEnd, output, count);
+                    while (token != nullptr) {
+                        print.append(token).append(" ");
+                        token = strtok(nullptr, " ");
+                    }
+                    print.append("\n");
+                    int count = sprintf(output, "%s", print.c_str());
+                    for (int i = 0; i <= currentClient; ++i) {
+                        write(clientsList[i].writingEnd, output, count);
+                    }
                 }
             } else if (operation == 2) {
                 char output[1000];
@@ -562,39 +566,43 @@ void *client(void *ptr) {
                     }
                     write(STDOUT_FILENO, output, currentPosition);
                 } else {
-                    write(STDOUT_FILENO, "No Clients Connected\n", 21);
+                    write(STDOUT_FILENO, "No Client Connected\n", 20);
                 }
             } else if (operation == 3) {
-                char output[500];
-                char saveIP[100];
-                std::string print;
-                char buf[sizeof(struct in6_addr)];
-                int clientIndex;
-                int ipCheck = -1;
-                token = strtok(nullptr, " ");
-                ipCheck = inet_pton(AF_INET, token, buf);
-                if (ipCheck <= 0) {
-                    write(STDOUT_FILENO, "Invalid IP format\n", 18);
+                if (currentClient == -1) {
+                    write(STDOUT_FILENO, "No Client Connected\n", 20);
                 } else {
-                    for (int i = 0; i <= currentClient; ++i) {
-                        sscanf(clientsList[i].ip.c_str(), "%s", saveIP);
-                        if (strcmp(saveIP, token) == 0) {
-                            clientIndex = i;
-                            break;
-                        }
-                    }
-                    if (ipCheck != -1) {
-                        print.append("print Message from server: ");
-                        token = strtok(nullptr, " ");
-                        while (token != nullptr) {
-                            print.append(token).append(" ");
-                            token = strtok(nullptr, " ");
-                        }
-                        print.append("\n");
-                        int count = sprintf(output, "%s", print.c_str());
-                        write(clientsList[clientIndex].writingEnd, output, count);
+                    char output[500];
+                    char saveIP[100];
+                    std::string print;
+                    char buf[sizeof(struct in6_addr)];
+                    int clientIndex;
+                    int ipCheck = -1;
+                    token = strtok(nullptr, " ");
+                    ipCheck = inet_pton(AF_INET, token, buf);
+                    if (ipCheck <= 0) {
+                        write(STDOUT_FILENO, "Invalid IP format\n", 18);
                     } else {
-                        write(STDOUT_FILENO, "IP does not exist\n", 18);
+                        for (int i = 0; i <= currentClient; ++i) {
+                            sscanf(clientsList[i].ip.c_str(), "%s", saveIP);
+                            if (strcmp(saveIP, token) == 0) {
+                                clientIndex = i;
+                                break;
+                            }
+                        }
+                        if (ipCheck != -1) {
+                            print.append("print Message from server: ");
+                            token = strtok(nullptr, " ");
+                            while (token != nullptr) {
+                                print.append(token).append(" ");
+                                token = strtok(nullptr, " ");
+                            }
+                            print.append("\n");
+                            int count = sprintf(output, "%s", print.c_str());
+                            write(clientsList[clientIndex].writingEnd, output, count);
+                        } else {
+                            write(STDOUT_FILENO, "IP does not exist\n", 18);
+                        }
                     }
                 }
             }
