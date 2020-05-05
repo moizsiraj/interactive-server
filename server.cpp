@@ -61,6 +61,7 @@ struct clients {
     int clientID = -1;
     int readingEnd = -1;
     int writingEnd = -1;
+    int msgsock;
     std::string ip;
 };
 
@@ -88,6 +89,7 @@ int main() {
             clientsList[currentClient].readingEnd = write2CON[0];
             clientsList[currentClient].writingEnd = write2CH[1];
             clientsList->ip = inet_ntoa(addr.sin_addr);
+            clientsList->msgsock = msgsock;
 
             int clientHandlerPID = fork();
 

@@ -81,10 +81,10 @@ void *getCommand(void *ptr) {
 }
 
 void *getResult(void *ptr) {
-    while(true){
+    while (true) {
         int readCheck = read(sock, outputText, 500);
         if (strcmp(outputText, "exit") == 0) {
-            
+
             close(sock);
             exit(0);
         } else {
