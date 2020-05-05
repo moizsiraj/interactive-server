@@ -345,7 +345,6 @@ void signal_handler(int signo) {
     }
 }
 
-
 //client handler thread
 void *client(void *ptr) {
     bool continueInput = true;
