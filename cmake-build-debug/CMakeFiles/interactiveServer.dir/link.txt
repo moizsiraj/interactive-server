@@ -1,0 +1,1 @@
+/usr/bin/c++  -g   CMakeFiles/interactiveServer.dir/server.cpp.o CMakeFiles/interactiveServer.dir/client.cpp.o  -o interactiveServer 
