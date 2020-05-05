@@ -492,7 +492,7 @@ void *client(void *ptr) {
             print.append("\n");
             int read = sprintf(messageBuffer, "%s", print.c_str());
             write(STDOUT_FILENO, messageBuffer, read);
-            write(msgsock, "\nInput next command\n", 20);
+            write(msgsock, "Input next command\n", 19);
         }
     }
 }
@@ -512,7 +512,7 @@ void *client(void *ptr) {
         input[checkRead - 1] = '\0';//adding null at the end
 
         if (checkRead == 1) {//empty input
-            write(STDIN_FILENO, "Input next command\n", 19);
+            write(STDIN_FILENO, "No command input\n", 17);
         } else {
             //getting the first token to set operation
             token = strtok(input, " ");
