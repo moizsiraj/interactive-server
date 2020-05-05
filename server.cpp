@@ -71,6 +71,7 @@ int main() {
         if (msgsock != -1) {
             currentClient++;
             int checkPipe = pipe(write2CH);
+            int checkPipe2 = pipe(write2CON);
             clientList[currentClient][0] = currentClient + 1;
             clientList[currentClient][1] = write2CH[1];//writing end
             clientList[currentClient][2] = write2CON[0];//reading end
@@ -362,7 +363,6 @@ void *client(void *ptr) {
                    "Please input your command:\n", 166);
 
     while (continueInput) {
-
         int checkRead = read(msgsock, inputText, 500);//reading from socket
         inputText[checkRead - 1] = '\0';//adding null at the end
 
@@ -428,7 +428,6 @@ void *client(void *ptr) {
                 int noOfChars = sprintf(&outputText[noOfCharPrint - 1], "%s", "\nInput next command\n");
                 count = noOfCharPrint + noOfChars;
             }
-
             write(msgsock, outputText, count);
         }
 
@@ -538,20 +537,16 @@ void *client(void *ptr) {
                 }
             } else if (operation == 2) {
                 char output[1000];
+                std::string print;
                 int currentPosition = 0;
                 if (currentClient >= 0) {
                     for (int i = 0; i <= currentClient; i++) {
-                        write(STDOUT_FILENO, "check1\n", 7);
                         write(clientList[i][1], "list ", 5);
-                        write(STDOUT_FILENO, "check2\n", 7);
                         int count = read(clientList[i][2], input, 500);//B3
-                        sscanf(input, "%s", &output[currentPosition]);
+                        sprintf(&output[currentPosition], "%s", input);
                         currentPosition = currentPosition + count;
-                        write(STDOUT_FILENO, "check3\n", 7);
                     }
-                    write(STDOUT_FILENO, "check4\n", 7);
                     write(STDOUT_FILENO, output, currentPosition);
-                    write(STDOUT_FILENO, "check5\n", 7);
                 } else {
                     write(STDOUT_FILENO, "No Clients Connected\n", 21);
                 }
@@ -570,10 +565,8 @@ void *inputHandler(void *ptr) {
     int checkRead;
 
     while (true) {
-        write(STDOUT_FILENO, "check13\n", 8);
         checkRead = read(write2CH[0], input, 500);//B2//B4
         input[checkRead - 1] = '\0';//adding null at the end
-        write(STDOUT_FILENO, "check14\n", 7);
 
         token = strtok(input, " ");
         sscanf(token, "%s", saveOperator);
@@ -599,9 +592,7 @@ void *inputHandler(void *ptr) {
                 print.append("\n");
             }
             int count = sprintf(output, "%s", print.c_str());
-            write(STDOUT_FILENO, "check11\n", 8);
             write(write2CON[1], output, count);
-            write(STDOUT_FILENO, "check12\n", 8);
         }
     }
 }
