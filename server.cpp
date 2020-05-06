@@ -27,10 +27,11 @@ int removeColon(std::string s);
 
 void createSock();
 
-double performOperation(int saveCurrentNumber, double currentTotal,
-                        int operation);//method performs the operation on the given integer
+double performOperation(int saveCurrentNumber, double currentTotal, int operation);
 
 int killProcess(char *PID);
+
+int killAllProcess();
 
 int runProcess(char *processName, char *filePath);
 
@@ -42,17 +43,16 @@ void *client(void *ptr);
 
 void *inputHandler(void *ptr);
 
-bool getFirstNumber;
 std::string list[20][6];
 int write2CH[2];
 int write2CON[2];
 int currentClient = -1;
-int noOfCurrentProcess = 0;
+int currentListIndex = 0;
+int activeProcesses = 0;
 int sock;
-char inputText[500];
-char outputText[500];
 int msgsock;
 bool divZero = false;
+bool getFirstNumber;
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
@@ -169,14 +169,14 @@ int runProcess(char *processName, char *filePath) {
     if (pidChild2 > 0) {
         close(pipefds3[1]);
         char errorCheck[50];
-        list[noOfCurrentProcess][0] = std::to_string(pidChild2);
-        list[noOfCurrentProcess][1] = processName;
-        list[noOfCurrentProcess][2] = "Running";
-        list[noOfCurrentProcess][3] = getTime();
-        list[noOfCurrentProcess][4] = "-";
-        list[noOfCurrentProcess][5] = "-";
-
-        noOfCurrentProcess++;
+        list[currentListIndex][0] = std::to_string(pidChild2);
+        list[currentListIndex][1] = processName;
+        list[currentListIndex][2] = "Running";
+        list[currentListIndex][3] = getTime();
+        list[currentListIndex][4] = "-";
+        list[currentListIndex][5] = "-";
+        activeProcesses++;
+        currentListIndex++;
         bool error = false;
         int readCheck = read(pipefds3[0], errorCheck, 50);
         if (readCheck > 0) {
@@ -184,7 +184,8 @@ int runProcess(char *processName, char *filePath) {
         }
         if (error) {
             int noOfChars = sprintf(&errorCheck[readCheck - 1], "%s", "\nInput next command\n");
-            noOfCurrentProcess--;
+            activeProcesses--;
+            currentListIndex--;
             int count = readCheck + noOfChars;
             write(msgsock, errorCheck, count);
         } else {
@@ -241,25 +242,53 @@ std::string elapsedTime(std::string startTime, std::string endTime) {
 }
 
 int killProcess(char *PID) {
-
-    int pid = atoi(PID);
+    bool pidFound = false;
+    bool nameFound = false;
     int index = -1;
-    for (int i = 0; i < noOfCurrentProcess; ++i) {
+    for (int i = 0; i < currentListIndex; ++i) {
         if (strcmp(PID, list[i][0].c_str()) == 0) {
             index = i;
+            pidFound = true;
             break;
         }
     }
-    if (index != -1 && strcmp(list[index][2].c_str(), "Running") == 0) {
-        kill(pid, SIGTERM);
-        list[index][2] = "Killed";
-        list[index][4] = getTime();
-        list[index][5] = elapsedTime(list[index][3], list[index][4]);
-        return 0;
-    } else if (index != -1 && strcmp(list[index][2].c_str(), "Killed") == 0) {
-        return -1;
+    for (int process = 0; process < currentListIndex; ++process) {
+        if (strcmp(PID, list[process][1].c_str()) == 0 && strcmp(list[process][2].c_str(), "Running") == 0) {
+            index = process;
+            nameFound = true;
+            break;
+        }
+    }
+    if (pidFound || nameFound) {
+        int pid = atoi(list[index][0].c_str());
+        if (index != -1 && strcmp(list[index][2].c_str(), "Running") == 0) {
+            kill(pid, SIGTERM);
+            list[index][2] = "Killed";
+            list[index][4] = getTime();
+            list[index][5] = elapsedTime(list[index][3], list[index][4]);
+            activeProcesses--;
+            return 0;
+        } else if (index != -1 && strcmp(list[index][2].c_str(), "Killed") == 0) {
+            return -1;
+        } else if (index != -1 && strcmp(list[index][2].c_str(), "Extrl Termination") == 0) {
+            return -1;
+        }
     } else {
         return 1;
+    }
+}
+
+int killAllProcess() {
+    for (int i = 0; i < currentListIndex; ++i) {
+        int pid = atoi(list[i][0].c_str());
+        if (strcmp(list[i][2].c_str(), "Running") == 0) {
+            kill(pid, SIGTERM);
+            list[i][2] = "Killed";
+            list[i][4] = getTime();
+            list[i][5] = elapsedTime(list[i][3], list[i][4]);
+            activeProcesses--;
+            return 0;
+        }
     }
 }
 
@@ -344,19 +373,21 @@ bool checkFormat(char *input) {
 void signal_handler(int signo) {
     if (signo == SIGCHLD) {
         int status;
-        int pid = waitpid(0, &status, WNOHANG);
-        if (pid != 0) {
-            int index = -1;
-            for (int i = 0; i < noOfCurrentProcess; ++i) {
-                if (pid == stoi(list[i][0])) {
-                    index = i;
-                    break;
+        for (int activeProcess = 1; activeProcess <= activeProcesses; ++activeProcess) {
+            int pid = waitpid(0, &status, WNOHANG);
+            if (pid != 0) {
+                int index = -1;
+                for (int i = 0; i < currentListIndex; ++i) {
+                    if (pid == stoi(list[i][0])) {
+                        index = i;
+                        break;
+                    }
                 }
-            }
-            if (index != -1 && strcmp(list[index][2].c_str(), "Running") == 0) {
-                list[index][2] = "Killed";
-                list[index][4] = getTime();
-                list[index][5] = elapsedTime(list[index][3], list[index][4]);
+                if (index != -1 && strcmp(list[index][2].c_str(), "Running") == 0) {
+                    list[index][2] = "Extrl Termination";
+                    list[index][4] = getTime();
+                    list[index][5] = elapsedTime(list[index][3], list[index][4]);
+                }
             }
         }
     }
@@ -364,6 +395,8 @@ void signal_handler(int signo) {
 
 //client handler thread
 void *client(void *ptr) {
+    char inputText[500];
+    char outputText[500];
     bool continueInput = true;
     char saveOperator[10];
     int operation = -1;
@@ -399,6 +432,7 @@ void *client(void *ptr) {
             write(msgsock, "exit\0", 5);
             close(sock);
             close(msgsock);
+            killAllProcess();
             wait(status);
             kill(getpid(), SIGTERM);
         }
@@ -483,7 +517,7 @@ void *client(void *ptr) {
             char output[500];
             std::string print;
             print.append("Process PID\tProcess Name\tStatus\t\tStart Time\t\tEnd Time\t\tElapsed Time\n\n");
-            for (int i = 0; i < noOfCurrentProcess; ++i) {
+            for (int i = 0; i < currentListIndex; ++i) {
                 for (int j = 0; j < 6; ++j) {
                     print.append(list[i][j]).append("\t\t");
                 }
@@ -642,7 +676,7 @@ void *inputHandler(void *ptr) {
         } else if (operation == 2) {
             std::string print;
             print.append("Process PID\t\tProcess Name\t\tStatus\t\tStart Time\t\tEnd Time\t\tElapsed Time\n");
-            for (int i = 0; i < noOfCurrentProcess; ++i) {
+            for (int i = 0; i < currentListIndex; ++i) {
                 for (int j = 0; j < 6; ++j) {
                     print.append(list[i][j]).append("\t\t");
                 }
