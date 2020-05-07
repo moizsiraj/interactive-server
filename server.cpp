@@ -43,7 +43,7 @@ void updateClientList(int pid);
 
 void *client(void *ptr);
 
-[[noreturn]] void *connection(void *ptr);
+void *connection(void *ptr);
 
 void *inputHandler(void *ptr);
 
@@ -57,12 +57,13 @@ struct clients {
     std::string status;
 };
 
-std::string list[20][6];
-int write2CH[2];
-int write2CON[2];
-int currentClient = -1;
+std::string processList[20][6];
 int currentListIndex = 0;
 int activeProcesses = 0;
+int write2CH[2];
+int write2CON[2];
+int currentClientIndex = -1;
+int activeClients = 0;
 int sock;
 int msgsock;
 bool divZero = false;
@@ -91,16 +92,17 @@ int main() {
     while (true) {
         msgsock = accept(sock, (struct sockaddr *) &addr, &client_addr_size);
         if (msgsock != -1) {
-            currentClient++;
+            currentClientIndex++;
+            activeClients++;
             int checkPipe = pipe(write2CH);
             int checkPipe2 = pipe(write2CON);
 
-            clientsList[currentClient].clientID = currentClient + 1;
-            clientsList[currentClient].readingEnd = write2CON[0];
-            clientsList[currentClient].writingEnd = write2CH[1];
-            clientsList[currentClient].ip = inet_ntoa(addr.sin_addr);
-            clientsList[currentClient].msgsock = msgsock;
-            clientsList[currentClient].status = "Connected";
+            clientsList[currentClientIndex].clientID = currentClientIndex + 1;
+            clientsList[currentClientIndex].readingEnd = write2CON[0];
+            clientsList[currentClientIndex].writingEnd = write2CH[1];
+            clientsList[currentClientIndex].ip = inet_ntoa(addr.sin_addr);
+            clientsList[currentClientIndex].msgsock = msgsock;
+            clientsList[currentClientIndex].status = "Connected";
 
             clientHandlerPID = fork();
 
@@ -119,7 +121,7 @@ int main() {
         } else {
             write(STDOUT_FILENO, "Connection fail\n", 16);
         }
-        clientsList[currentClient].pid = clientHandlerPID;
+        clientsList[currentClientIndex].pid = clientHandlerPID;
     }
     pthread_join(inputThread, nullptr);
     return 0;
@@ -127,6 +129,7 @@ int main() {
 
 #pragma clang diagnostic pop
 
+//creating socket
 void createSock() {
     char output[500];
     struct sockaddr_in server;//struct to store socket info
@@ -157,6 +160,7 @@ void createSock() {
     fflush(stdout);
 }
 
+//run processes on client's command
 int runProcess(char *processName, char *filePath) {
     int pipefds3[2];
     int pipeCheck = pipe2(pipefds3, O_CLOEXEC);
@@ -180,12 +184,12 @@ int runProcess(char *processName, char *filePath) {
     if (pidChild2 > 0) {
         close(pipefds3[1]);
         char errorCheck[50];
-        list[currentListIndex][0] = std::to_string(pidChild2);
-        list[currentListIndex][1] = processName;
-        list[currentListIndex][2] = "Running";
-        list[currentListIndex][3] = getTime();
-        list[currentListIndex][4] = "-";
-        list[currentListIndex][5] = "-";
+        processList[currentListIndex][0] = std::to_string(pidChild2);
+        processList[currentListIndex][1] = processName;
+        processList[currentListIndex][2] = "Running";
+        processList[currentListIndex][3] = getTime();
+        processList[currentListIndex][4] = "-";
+        processList[currentListIndex][5] = "-";
         activeProcesses++;
         currentListIndex++;
         bool error = false;
@@ -206,6 +210,7 @@ int runProcess(char *processName, char *filePath) {
     return 0;
 }
 
+//method to get current time
 std::string getTime() {
     time_t rawtime;
     struct tm *timeinfo;
@@ -219,6 +224,7 @@ std::string getTime() {
     return str;
 }
 
+//helper method for time calculations
 int removeColon(std::string s) {
     char buffer[8];
     int count = sprintf(buffer, "%s", s.c_str());
@@ -227,6 +233,7 @@ int removeColon(std::string s) {
     return std::stoi(s);
 }
 
+//calculating elapsed time
 std::string elapsedTime(std::string startTime, std::string endTime) {
     int time1 = removeColon(startTime);
     int time2 = removeColon(endTime);
@@ -252,36 +259,38 @@ std::string elapsedTime(std::string startTime, std::string endTime) {
     return res;
 }
 
+//kill process by pid or name
 int killProcess(char *PID) {
     bool pidFound = false;
     bool nameFound = false;
     int index = -1;
     for (int i = 0; i < currentListIndex; ++i) {
-        if (strcmp(PID, list[i][0].c_str()) == 0) {
+        if (strcmp(PID, processList[i][0].c_str()) == 0) {
             index = i;
             pidFound = true;
             break;
         }
     }
     for (int process = 0; process < currentListIndex; ++process) {
-        if (strcmp(PID, list[process][1].c_str()) == 0 && strcmp(list[process][2].c_str(), "Running") == 0) {
+        if (strcmp(PID, processList[process][1].c_str()) == 0 &&
+            strcmp(processList[process][2].c_str(), "Running") == 0) {
             index = process;
             nameFound = true;
             break;
         }
     }
     if (pidFound || nameFound) {
-        int pid = atoi(list[index][0].c_str());
-        if (index != -1 && strcmp(list[index][2].c_str(), "Running") == 0) {
+        int pid = atoi(processList[index][0].c_str());
+        if (index != -1 && strcmp(processList[index][2].c_str(), "Running") == 0) {
             kill(pid, SIGTERM);
-            list[index][2] = "Killed";
-            list[index][4] = getTime();
-            list[index][5] = elapsedTime(list[index][3], list[index][4]);
+            processList[index][2] = "Killed";
+            processList[index][4] = getTime();
+            processList[index][5] = elapsedTime(processList[index][3], processList[index][4]);
             activeProcesses--;
             return 0;
-        } else if (index != -1 && strcmp(list[index][2].c_str(), "Killed") == 0) {
+        } else if (index != -1 && strcmp(processList[index][2].c_str(), "Killed") == 0) {
             return -1;
-        } else if (index != -1 && strcmp(list[index][2].c_str(), "Extrl Termination") == 0) {
+        } else if (index != -1 && strcmp(processList[index][2].c_str(), "Extrl Termination") == 0) {
             return -1;
         }
     } else {
@@ -289,20 +298,22 @@ int killProcess(char *PID) {
     }
 }
 
+//killing all client processes at exit
 int killAllProcess() {
     for (int i = 0; i < currentListIndex; ++i) {
-        int pid = atoi(list[i][0].c_str());
-        if (strcmp(list[i][2].c_str(), "Running") == 0) {
+        int pid = atoi(processList[i][0].c_str());
+        if (strcmp(processList[i][2].c_str(), "Running") == 0) {
             kill(pid, SIGTERM);
-            list[i][2] = "Killed";
-            list[i][4] = getTime();
-            list[i][5] = elapsedTime(list[i][3], list[i][4]);
+            processList[i][2] = "Killed";
+            processList[i][4] = getTime();
+            processList[i][5] = elapsedTime(processList[i][3], processList[i][4]);
             activeProcesses--;
             return 0;
         }
     }
 }
 
+//method for calculations
 double performOperation(int saveCurrentNumber, double currentTotal, int operation) {
     if (!getFirstNumber) {
         currentTotal = saveCurrentNumber;
@@ -330,6 +341,7 @@ double performOperation(int saveCurrentNumber, double currentTotal, int operatio
     return currentTotal;
 }
 
+//operation setter for client handler
 int setOperation(char *operationText) {
     int operation;
     if (strcmp(operationText, "add") == 0) {
@@ -356,6 +368,7 @@ int setOperation(char *operationText) {
     return operation;
 }
 
+//operation setter for input handler and input thread
 int setOperationInput(char *operationText) {
     int operation;
     if (strcmp(operationText, "print2all") == 0) {
@@ -370,6 +383,7 @@ int setOperationInput(char *operationText) {
     return operation;
 }
 
+//checking int for calculations
 bool checkFormat(char *input) {
     bool isNumber;
     std::regex b("^[-+]?\\d+$");//accepts negative and positive integers only
@@ -381,6 +395,7 @@ bool checkFormat(char *input) {
     return isNumber;
 }
 
+//for handling client run processes exit
 void signal_handler_CH(int signo) {
     if (signo == SIGCHLD) {
         int status;
@@ -389,25 +404,27 @@ void signal_handler_CH(int signo) {
             if (pid != 0) {
                 int index = -1;
                 for (int i = 0; i < currentListIndex; ++i) {
-                    if (pid == stoi(list[i][0])) {
+                    if (pid == stoi(processList[i][0])) {
                         index = i;
                         break;
                     }
                 }
-                if (index != -1 && strcmp(list[index][2].c_str(), "Running") == 0) {
-                    list[index][2] = "Extrl Termination";
-                    list[index][4] = getTime();
-                    list[index][5] = elapsedTime(list[index][3], list[index][4]);
+                if (index != -1 && strcmp(processList[index][2].c_str(), "Running") == 0) {
+                    processList[index][2] = "Extrl Termination";
+                    processList[index][4] = getTime();
+                    processList[index][5] = elapsedTime(processList[index][3], processList[index][4]);
+                    activeProcesses--;
                 }
             }
         }
     }
 }
 
+//for handling client handler exits
 void signal_handler_CONH(int signo) {
     if (signo == SIGCHLD) {
         int status;
-        for (int activeClients = 0; activeClients <= currentClient; ++activeClients) {
+        for (int activeClient = 0; activeClient <= activeClients; ++activeClient) {
             int pid = waitpid(0, &status, WNOHANG);
             if (pid != 0) {
                 updateClientList(pid);
@@ -542,7 +559,7 @@ void *client(void *ptr) {
             print.append("Process PID\tProcess Name\tStatus\t\tStart Time\t\tEnd Time\t\tElapsed Time\n\n");
             for (int i = 0; i < currentListIndex; ++i) {
                 for (int j = 0; j < 6; ++j) {
-                    print.append(list[i][j]).append("\t\t");
+                    print.append(processList[i][j]).append("\t\t");
                 }
                 print.append("\n");
             }
@@ -571,9 +588,8 @@ void *client(void *ptr) {
 }
 
 //Input Thread
-[[noreturn]] void *connection(void *ptr) {
+void *connection(void *ptr) {
     char input[500];
-
     char saveOperator[10];
     int operation = -1;
     char *token;
@@ -595,7 +611,7 @@ void *client(void *ptr) {
             if (operation == -1) {
                 write(STDOUT_FILENO, "Invalid Command\n", 16);
             } else if (operation == 1) {
-                if (currentClient == -1) {
+                if (activeClients == 0) {
                     write(STDOUT_FILENO, "No Client Connected\n", 20);
                 } else {
                     char output[500];
@@ -608,7 +624,7 @@ void *client(void *ptr) {
                     }
                     print.append("\n");
                     int count = sprintf(output, "%s", print.c_str());
-                    for (int i = 0; i <= currentClient; ++i) {
+                    for (int i = 0; i <= currentClientIndex; ++i) {
                         if (strcmp(clientsList[i].status.c_str(), "Connected") == 0) {
                             int checkWrite = write(clientsList[i].writingEnd, output, count);
                         }
@@ -618,9 +634,11 @@ void *client(void *ptr) {
                 char output[1000];
                 std::string print;
                 int currentPosition = 0;
-                if (currentClient >= 0) {
+                if (activeClients == 0) {
+                    write(STDOUT_FILENO, "No Client Connected\n", 20);
+                } else {
                     print.append("Process PID\tProcess Name\tStatus\t\tStart Time\t\tEnd Time\t\tElapsed Time\n\n");
-                    for (int i = 0; i <= currentClient; i++) {
+                    for (int i = 0; i <= currentClientIndex; i++) {
                         if (strcmp(clientsList[i].status.c_str(), "Connected") == 0) {
                             int checkWrite = write(clientsList[i].writingEnd, "list ", 5);
                             int count = read(clientsList[i].readingEnd, input, 500);//B3
@@ -629,11 +647,9 @@ void *client(void *ptr) {
                         }
                     }
                     write(STDOUT_FILENO, output, currentPosition);
-                } else {
-                    write(STDOUT_FILENO, "No Client Connected\n", 20);
                 }
             } else if (operation == 3) {
-                if (currentClient == -1) {
+                if (activeClients == 0) {
                     write(STDOUT_FILENO, "No Client Connected\n", 20);
                 } else {
                     char output[500];
@@ -647,7 +663,7 @@ void *client(void *ptr) {
                     if (ipCheck <= 0) {
                         write(STDOUT_FILENO, "Invalid IP format\n", 18);
                     } else {
-                        for (int i = 0; i <= currentClient; ++i) {
+                        for (int i = 0; i <= currentClientIndex; ++i) {
                             sscanf(clientsList[i].ip.c_str(), "%s", saveIP);
                             if (strcmp(saveIP, token) == 0) {
                                 clientIndex = i;
@@ -675,9 +691,10 @@ void *client(void *ptr) {
     }
 }
 
+//update client list on disconnects
 void updateClientList(int pid) {
     int index = -1;
-    for (int client = 0; client <= currentClient; ++client) {
+    for (int client = 0; client <= currentClientIndex; ++client) {
         if (clientsList[client].pid == pid) {
             index = client;
             break;
@@ -688,6 +705,7 @@ void updateClientList(int pid) {
         close(clientsList[index].readingEnd);
         close(clientsList[index].msgsock);
         clientsList[index].status = "Disconnected";
+        activeClients--;
     }
 }
 
@@ -723,7 +741,7 @@ void *inputHandler(void *ptr) {
             print.append("Process PID\tProcess Name\tStatus\t\tStart Time\t\tEnd Time\t\tElapsed Time\n\n");
             for (int i = 0; i < currentListIndex; ++i) {
                 for (int j = 0; j < 6; ++j) {
-                    print.append(list[i][j]).append("\t\t");
+                    print.append(processList[i][j]).append("\t\t");
                 }
                 print.append("\n");
             }
