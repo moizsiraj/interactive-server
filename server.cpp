@@ -15,7 +15,9 @@ using namespace std;
 
 int setOperation(char *operationText);
 
-void signal_handler(int signo);
+void signal_handler_CH(int signo);
+
+void signal_handler_CONH(int signo);
 
 bool checkFormat(char *input);
 
@@ -37,11 +39,23 @@ int runProcess(char *processName, char *filePath);
 
 int setOperationInput(char *operationText);
 
+void updateClientList(int pid);
+
 void *client(void *ptr);
 
 [[noreturn]] void *connection(void *ptr);
 
 void *inputHandler(void *ptr);
+
+struct clients {
+    int clientID = -1;
+    int readingEnd = -1;
+    int writingEnd = -1;
+    int pid;
+    int msgsock;
+    std::string ip;
+    std::string status;
+};
 
 std::string list[20][6];
 int write2CH[2];
@@ -57,18 +71,13 @@ bool getFirstNumber;
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
 
-struct clients {
-    int clientID = -1;
-    int readingEnd = -1;
-    int writingEnd = -1;
-    int msgsock;
-    std::string ip;
-};
-
 struct clients clientsList[10];
 
 int main() {
 
+    if (signal(SIGCHLD, signal_handler_CONH) == SIG_ERR) {
+        write(STDOUT_FILENO, "sig error", 9);
+    }
     pthread_t inputThread;
     int inputID;
 
@@ -77,6 +86,7 @@ int main() {
     inputID = pthread_create(&inputThread, nullptr, connection, (void *) nullptr);
     struct sockaddr_in addr;
     socklen_t client_addr_size = sizeof(struct sockaddr_in);
+    int clientHandlerPID;
 
     while (true) {
         msgsock = accept(sock, (struct sockaddr *) &addr, &client_addr_size);
@@ -88,10 +98,11 @@ int main() {
             clientsList[currentClient].clientID = currentClient + 1;
             clientsList[currentClient].readingEnd = write2CON[0];
             clientsList[currentClient].writingEnd = write2CH[1];
-            clientsList->ip = inet_ntoa(addr.sin_addr);
-            clientsList->msgsock = msgsock;
+            clientsList[currentClient].ip = inet_ntoa(addr.sin_addr);
+            clientsList[currentClient].msgsock = msgsock;
+            clientsList[currentClient].status = "Connected";
 
-            int clientHandlerPID = fork();
+            clientHandlerPID = fork();
 
             if (clientHandlerPID == 0) {
                 pthread_t clientHThread;
@@ -108,7 +119,7 @@ int main() {
         } else {
             write(STDOUT_FILENO, "Connection fail\n", 16);
         }
-
+        clientsList[currentClient].pid = clientHandlerPID;
     }
     pthread_join(inputThread, nullptr);
     return 0;
@@ -370,7 +381,7 @@ bool checkFormat(char *input) {
     return isNumber;
 }
 
-void signal_handler(int signo) {
+void signal_handler_CH(int signo) {
     if (signo == SIGCHLD) {
         int status;
         for (int activeProcess = 1; activeProcess <= activeProcesses; ++activeProcess) {
@@ -393,6 +404,18 @@ void signal_handler(int signo) {
     }
 }
 
+void signal_handler_CONH(int signo) {
+    if (signo == SIGCHLD) {
+        int status;
+        for (int activeClients = 0; activeClients <= currentClient; ++activeClients) {
+            int pid = waitpid(0, &status, WNOHANG);
+            if (pid != 0) {
+                updateClientList(pid);
+            }
+        }
+    }
+}
+
 //client handler thread
 void *client(void *ptr) {
     char inputText[500];
@@ -403,7 +426,7 @@ void *client(void *ptr) {
     char *token;
 
 
-    if (signal(SIGCHLD, signal_handler) == SIG_ERR) {
+    if (signal(SIGCHLD, signal_handler_CH) == SIG_ERR) {
         write(STDOUT_FILENO, "sig error", 9);
     }
 
@@ -586,7 +609,9 @@ void *client(void *ptr) {
                     print.append("\n");
                     int count = sprintf(output, "%s", print.c_str());
                     for (int i = 0; i <= currentClient; ++i) {
-                        write(clientsList[i].writingEnd, output, count);
+                        if (strcmp(clientsList[i].status.c_str(), "Connected") == 0) {
+                            int checkWrite = write(clientsList[i].writingEnd, output, count);
+                        }
                     }
                 }
             } else if (operation == 2) {
@@ -594,11 +619,14 @@ void *client(void *ptr) {
                 std::string print;
                 int currentPosition = 0;
                 if (currentClient >= 0) {
+                    print.append("Process PID\tProcess Name\tStatus\t\tStart Time\t\tEnd Time\t\tElapsed Time\n\n");
                     for (int i = 0; i <= currentClient; i++) {
-                        write(clientsList[i].writingEnd, "list ", 5);
-                        int count = read(clientsList[i].readingEnd, input, 500);//B3
-                        sprintf(&output[currentPosition], "%s", input);
-                        currentPosition = currentPosition + count;
+                        if (strcmp(clientsList[i].status.c_str(), "Connected") == 0) {
+                            int checkWrite = write(clientsList[i].writingEnd, "list ", 5);
+                            int count = read(clientsList[i].readingEnd, input, 500);//B3
+                            sprintf(&output[currentPosition], "%s", input);
+                            currentPosition = currentPosition + count;
+                        }
                     }
                     write(STDOUT_FILENO, output, currentPosition);
                 } else {
@@ -635,7 +663,9 @@ void *client(void *ptr) {
                             }
                             print.append("\n");
                             int count = sprintf(output, "%s", print.c_str());
-                            write(clientsList[clientIndex].writingEnd, output, count);
+                            if (strcmp(clientsList[clientIndex].status.c_str(), "Connected") == 0) {
+                                int checkWrite = write(clientsList[clientIndex].writingEnd, output, count);
+                            }
                         } else {
                             write(STDOUT_FILENO, "IP does not exist\n", 18);
                         }
@@ -643,6 +673,22 @@ void *client(void *ptr) {
                 }
             }
         }
+    }
+}
+
+void updateClientList(int pid) {
+    int index = -1;
+    for (int client = 0; client <= currentClient; ++client) {
+        if (clientsList[client].pid == pid) {
+            index = client;
+            break;
+        }
+    }
+    if (index != -1) {
+        close(clientsList[index].writingEnd);
+        close(clientsList[index].readingEnd);
+        close(clientsList[index].msgsock);
+        clientsList[index].status = "Disconnected";
     }
 }
 
@@ -675,7 +721,7 @@ void *inputHandler(void *ptr) {
             write(msgsock, output, count);
         } else if (operation == 2) {
             std::string print;
-            print.append("Process PID\t\tProcess Name\t\tStatus\t\tStart Time\t\tEnd Time\t\tElapsed Time\n");
+            print.append("Process PID\tProcess Name\tStatus\t\tStart Time\t\tEnd Time\t\tElapsed Time\n\n");
             for (int i = 0; i < currentListIndex; ++i) {
                 for (int j = 0; j < 6; ++j) {
                     print.append(list[i][j]).append("\t\t");
