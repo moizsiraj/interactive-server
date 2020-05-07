@@ -651,7 +651,6 @@ void *client(void *ptr) {
                             sscanf(clientsList[i].ip.c_str(), "%s", saveIP);
                             if (strcmp(saveIP, token) == 0) {
                                 clientIndex = i;
-                                break;
                             }
                         }
                         if (ipCheck != -1) {
