@@ -41,6 +41,8 @@ int setOperationInput(char *operationText);
 
 void updateClientList(int pid);
 
+std::string getIP(int msgsock);
+
 void *client(void *ptr);
 
 void *connection(void *ptr);
@@ -433,6 +435,17 @@ void signal_handler_CONH(int signo) {
     }
 }
 
+std::string getIP(int msgsock) {
+    int index = -1;
+    for (int i = 0; i <= currentClientIndex; ++i) {
+        if (msgsock == clientsList[i].msgsock) {
+            index = i;
+            break;
+        }
+    }
+    return clientsList[index].ip;
+}
+
 //client handler thread
 void *client(void *ptr) {
     char inputText[500];
@@ -589,7 +602,7 @@ void *client(void *ptr) {
 
 //Input Thread
 void *connection(void *ptr) {
-    char input[500];
+    char input[1000];
     char saveOperator[10];
     int operation = -1;
     char *token;
@@ -597,7 +610,7 @@ void *connection(void *ptr) {
 
     while (true) {
         write(STDIN_FILENO, "Input next command\n", 19);
-        checkRead = read(STDIN_FILENO, input, 500);//B1
+        checkRead = read(STDIN_FILENO, input, 1000);//B1
         input[checkRead - 1] = '\0';//adding null at the end
 
         if (checkRead == 1) {//empty input
@@ -633,14 +646,20 @@ void *connection(void *ptr) {
             } else if (operation == 2) {
                 char output[1000];
                 std::string print;
+                std::string ip;
+                char *token;
+                int msgsock;
                 int currentPosition = 0;
                 if (activeClients == 0) {
                     write(STDOUT_FILENO, "No Client Connected\n", 20);
                 } else {
-                    print.append("Process PID\tProcess Name\tStatus\t\tStart Time\t\tEnd Time\t\tElapsed Time\n\n");
                     for (int i = 0; i <= currentClientIndex; i++) {
                         if (strcmp(clientsList[i].status.c_str(), "Connected") == 0) {
                             int checkWrite = write(clientsList[i].writingEnd, "list ", 5);
+                            ip = "List from: ";
+                            ip.append(clientsList[i].ip).append("\n");
+                            int checkPrint = sprintf(&output[currentPosition], "%s", ip.c_str());
+                            currentPosition = currentPosition + checkPrint;
                             int count = read(clientsList[i].readingEnd, input, 500);//B3
                             sprintf(&output[currentPosition], "%s", input);
                             currentPosition = currentPosition + count;
@@ -715,15 +734,15 @@ void updateClientList(int pid) {
 
 //Input handler thread
 void *inputHandler(void *ptr) {
-    char input[500];
-    char output[500];
+    char input[1000];
+    char output[1000];
     char saveOperator[10];
     int operation = -1;
     char *token;
     int checkRead;
 
     while (true) {
-        checkRead = read(write2CH[0], input, 500);//B2//B4
+        checkRead = read(write2CH[0], input, 1000);//B2//B4
         input[checkRead - 1] = '\0';//adding null at the end
 
         token = strtok(input, " ");
@@ -742,7 +761,7 @@ void *inputHandler(void *ptr) {
             write(msgsock, output, count);
         } else if (operation == 2) {
             std::string print;
-            print.append("Process PID\tProcess Name\tStatus\t\tStart Time\t\tEnd Time\t\tElapsed Time\n\n");
+            print.append("Process PID\tProcess Name\tStatus\t\tStart Time\t\tEnd Time\t\tElapsed Time\n");
             for (int i = 0; i < currentListIndex; ++i) {
                 for (int j = 0; j < 6; ++j) {
                     print.append(processList[i][j]).append("\t\t");
