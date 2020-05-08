@@ -381,6 +381,8 @@ int setOperationInput(char *operationText) {
         operation = 3;
     } else if (strcmp(operationText, "clients") == 0) {
         operation = 4;
+    } else if (strcmp(operationText, "exit") == 0) {
+        operation = 5;
     } else {
         operation = -1;
     }
@@ -695,7 +697,7 @@ void *connection(void *ptr) {
                                 int count = sprintf(output, "%s", print.c_str());
                                 if (strcmp(clientsList[clientIndex].status.c_str(), "Connected") == 0) {
                                     int checkWrite = write(clientsList[clientIndex].writingEnd, output, count);
-                                }else{
+                                } else {
                                     write(STDOUT_FILENO, "Client not connected\n", 21);
                                 }
                             } else {
@@ -719,6 +721,17 @@ void *connection(void *ptr) {
                     }
                     int checkPrint = sprintf(output, "%s", print.c_str());
                     write(STDOUT_FILENO, output, checkPrint);
+                }
+            } else if (operation == 5) {
+                if (activeClients == 0) {
+                    exit(getpid());
+                } else {
+                    for (int i = 0; i <= currentClientIndex; ++i) {
+                        if (strcmp(clientsList[i].status.c_str(), "Connected") == 0) {
+                            int checkWrite = write(clientsList[i].writingEnd, "exit ", 5);
+                        }
+                    }
+                    exit(getpid());
                 }
             }
         }
@@ -785,6 +798,14 @@ void *inputHandler(void *ptr) {
                 int count = sprintf(output, "%s", print.c_str());
                 write(write2CON[1], output, count);
             }
+        } else if (operation == 5) {
+            int *status = nullptr;
+            write(msgsock, "exit\0", 5);
+            close(sock);
+            close(msgsock);
+            killAllProcess();
+            wait(status);
+            exit(getpid());
         }
     }
 }
