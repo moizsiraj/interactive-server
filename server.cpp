@@ -41,8 +41,6 @@ int setOperationInput(char *operationText);
 
 void updateClientList(int pid);
 
-std::string getIP(int msgsock);
-
 void *client(void *ptr);
 
 void *connection(void *ptr);
@@ -193,7 +191,7 @@ int runProcess(char *processName, char *filePath) {
         processList[currentListIndex][2] = "Running";
         processList[currentListIndex][3] = getTime();
         processList[currentListIndex][4] = "-";
-        processList[currentListIndex][5] = "-";
+        processList[currentListIndex][5] = "\t-";
         activeProcesses++;
         currentListIndex++;
         bool error = false;
@@ -294,7 +292,7 @@ int killProcess(char *PID) {
             return 0;
         } else if (index != -1 && strcmp(processList[index][2].c_str(), "Killed") == 0) {
             return -1;
-        } else if (index != -1 && strcmp(processList[index][2].c_str(), "Extrl Termination") == 0) {
+        } else if (index != -1 && strcmp(processList[index][2].c_str(), "ExtTerm") == 0) {
             return -1;
         }
     } else {
@@ -381,6 +379,8 @@ int setOperationInput(char *operationText) {
         operation = 2;
     } else if (strcmp(operationText, "print") == 0) {
         operation = 3;
+    } else if (strcmp(operationText, "clients") == 0) {
+        operation = 4;
     } else {
         operation = -1;
     }
@@ -414,7 +414,7 @@ void signal_handler_CH(int signo) {
                     }
                 }
                 if (index != -1 && strcmp(processList[index][2].c_str(), "Running") == 0) {
-                    processList[index][2] = "Extrl Termination";
+                    processList[index][2] = "ExtTerm";
                     processList[index][4] = getTime();
                     processList[index][5] = elapsedTime(processList[index][3], processList[index][4]);
                     activeProcesses--;
@@ -435,17 +435,6 @@ void signal_handler_CONH(int signo) {
             }
         }
     }
-}
-
-std::string getIP(int msgsock) {
-    int index = -1;
-    for (int i = 0; i <= currentClientIndex; ++i) {
-        if (msgsock == clientsList[i].msgsock) {
-            index = i;
-            break;
-        }
-    }
-    return clientsList[index].ip;
 }
 
 //client handler thread
@@ -706,12 +695,30 @@ void *connection(void *ptr) {
                                 int count = sprintf(output, "%s", print.c_str());
                                 if (strcmp(clientsList[clientIndex].status.c_str(), "Connected") == 0) {
                                     int checkWrite = write(clientsList[clientIndex].writingEnd, output, count);
+                                }else{
+                                    write(STDOUT_FILENO, "Client not connected\n", 21);
                                 }
                             } else {
                                 write(STDOUT_FILENO, "IP does not exist\n", 18);
                             }
                         }
                     }
+                }
+            } else if (operation == 4) {
+                char output[1000];
+                if (currentClientIndex == -1) {
+                    write(STDOUT_FILENO, "No Client Connected\n", 20);
+                } else {
+                    std::string print;
+                    print.append("Client ID\tPID\t\tIP\t\tStatus\n");
+                    for (int i = 0; i <= currentClientIndex; ++i) {
+                        print.append(to_string(clientsList[i].clientID)).append("\t\t");
+                        print.append(to_string(clientsList[i].pid)).append("\t\t");
+                        print.append(clientsList[i].ip).append("\t");
+                        print.append(clientsList[i].status).append("\n");
+                    }
+                    int checkPrint = sprintf(output, "%s", print.c_str());
+                    write(STDOUT_FILENO, output, checkPrint);
                 }
             }
         }
