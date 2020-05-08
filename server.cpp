@@ -659,30 +659,34 @@ void *connection(void *ptr) {
                     int clientIndex;
                     int ipCheck = -1;
                     token = strtok(nullptr, " ");
-                    ipCheck = inet_pton(AF_INET, token, buf);
-                    if (ipCheck <= 0) {
-                        write(STDOUT_FILENO, "Invalid IP format\n", 18);
+                    if (token == nullptr) {
+                        write(STDOUT_FILENO, "No IP Provided\n", 15);
                     } else {
-                        for (int i = 0; i <= currentClientIndex; ++i) {
-                            sscanf(clientsList[i].ip.c_str(), "%s", saveIP);
-                            if (strcmp(saveIP, token) == 0) {
-                                clientIndex = i;
-                            }
-                        }
-                        if (ipCheck != -1) {
-                            print.append("print Message from server: ");
-                            token = strtok(nullptr, " ");
-                            while (token != nullptr) {
-                                print.append(token).append(" ");
-                                token = strtok(nullptr, " ");
-                            }
-                            print.append("\n");
-                            int count = sprintf(output, "%s", print.c_str());
-                            if (strcmp(clientsList[clientIndex].status.c_str(), "Connected") == 0) {
-                                int checkWrite = write(clientsList[clientIndex].writingEnd, output, count);
-                            }
+                        ipCheck = inet_pton(AF_INET, token, buf);
+                        if (ipCheck <= 0) {
+                            write(STDOUT_FILENO, "No Client Connected\n", 20);
                         } else {
-                            write(STDOUT_FILENO, "IP does not exist\n", 18);
+                            for (int i = 0; i <= currentClientIndex; ++i) {
+                                sscanf(clientsList[i].ip.c_str(), "%s", saveIP);
+                                if (strcmp(saveIP, token) == 0) {
+                                    clientIndex = i;
+                                }
+                            }
+                            if (ipCheck != -1) {
+                                print.append("print Message from server: ");
+                                token = strtok(nullptr, " ");
+                                while (token != nullptr) {
+                                    print.append(token).append(" ");
+                                    token = strtok(nullptr, " ");
+                                }
+                                print.append("\n");
+                                int count = sprintf(output, "%s", print.c_str());
+                                if (strcmp(clientsList[clientIndex].status.c_str(), "Connected") == 0) {
+                                    int checkWrite = write(clientsList[clientIndex].writingEnd, output, count);
+                                }
+                            } else {
+                                write(STDOUT_FILENO, "IP does not exist\n", 18);
+                            }
                         }
                     }
                 }
