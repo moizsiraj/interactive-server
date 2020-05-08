@@ -68,6 +68,7 @@ int currentClientIndex = -1;
 int activeClients = 0;
 int sock;
 int msgsock;
+std::string ip;
 bool divZero = false;
 bool getFirstNumber;
 
@@ -105,6 +106,7 @@ int main() {
             clientsList[currentClientIndex].ip = inet_ntoa(addr.sin_addr);
             clientsList[currentClientIndex].msgsock = msgsock;
             clientsList[currentClientIndex].status = "Connected";
+            ip = inet_ntoa(addr.sin_addr);
 
             clientHandlerPID = fork();
 
@@ -587,7 +589,7 @@ void *client(void *ptr) {
             token = strtok(nullptr, " ");
             char messageBuffer[500];
             std::string print;
-            print.append("Message from client: ");
+            print.append("Message from ").append(ip).append(": ");
             while (token != nullptr) {
                 print.append(token).append(" ");
                 token = strtok(nullptr, " ");
@@ -647,8 +649,6 @@ void *connection(void *ptr) {
                 char output[1000];
                 std::string print;
                 std::string ip;
-                char *token;
-                int msgsock;
                 int currentPosition = 0;
                 if (activeClients == 0) {
                     write(STDOUT_FILENO, "No Client Connected\n", 20);
