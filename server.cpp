@@ -571,17 +571,21 @@ void *client(void *ptr) {
         else if (operation == 7) {
             char output[500];
             std::string print;
-            print.append("Process PID\tProcess Name\tStatus\t\tStart Time\t\tEnd Time\t\tElapsed Time\n\n");
-            for (int i = 0; i < currentListIndex; ++i) {
-                for (int j = 0; j < 6; ++j) {
-                    print.append(processList[i][j]).append("\t\t");
+            if (currentListIndex == 0) {
+                write(msgsock, "No processes\nInput next command\n", 32);
+            } else {
+                print.append("Process PID\tProcess Name\tStatus\t\tStart Time\t\tEnd Time\t\tElapsed Time\n\n");
+                for (int i = 0; i < currentListIndex; ++i) {
+                    for (int j = 0; j < 6; ++j) {
+                        print.append(processList[i][j]).append("\t\t");
+                    }
+                    print.append("\n");
                 }
-                print.append("\n");
+                int read = sprintf(output, "%s", print.c_str());
+                sprintf(&output[read - 1], "%s", "\nInput next command\n");
+                int count = read + 20;
+                write(msgsock, output, count);
             }
-            int read = sprintf(output, "%s", print.c_str());
-            sprintf(&output[read - 1], "%s", "\nInput next command\n");
-            int count = read + 20;
-            write(msgsock, output, count);
         }
 
             //print
@@ -761,15 +765,19 @@ void *inputHandler(void *ptr) {
             write(msgsock, output, count);
         } else if (operation == 2) {
             std::string print;
-            print.append("Process PID\tProcess Name\tStatus\t\tStart Time\t\tEnd Time\t\tElapsed Time\n");
-            for (int i = 0; i < currentListIndex; ++i) {
-                for (int j = 0; j < 6; ++j) {
-                    print.append(processList[i][j]).append("\t\t");
+            if (currentListIndex == 0) {
+                write(write2CON[1], "No processes\n", 13);
+            } else {
+                print.append("Process PID\tProcess Name\tStatus\t\tStart Time\t\tEnd Time\t\tElapsed Time\n");
+                for (int i = 0; i < currentListIndex; ++i) {
+                    for (int j = 0; j < 6; ++j) {
+                        print.append(processList[i][j]).append("\t\t");
+                    }
+                    print.append("\n");
                 }
-                print.append("\n");
+                int count = sprintf(output, "%s", print.c_str());
+                write(write2CON[1], output, count);
             }
-            int count = sprintf(output, "%s", print.c_str());
-            write(write2CON[1], output, count);
         }
     }
 }
