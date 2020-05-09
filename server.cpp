@@ -10,6 +10,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netdb.h>
+#include <ifaddrs.h>
 
 using namespace std;
 
@@ -57,7 +59,7 @@ struct clients {
     std::string status;
 };
 
-std::string processList[20][6];
+std::string processList[50][6];
 int currentListIndex = 0;
 int activeProcesses = 0;
 int write2CH[2];
@@ -73,7 +75,7 @@ bool getFirstNumber;
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
 
-struct clients clientsList[10];
+struct clients clientsList[50];
 
 int main() {
 
@@ -565,7 +567,7 @@ void *client(void *ptr) {
             if (currentListIndex == 0) {
                 write(msgsock, "No processes\nInput next command\n", 32);
             } else {
-                print.append("Process PID\tProcess Name\tStatus\t\tStart Time\t\tEnd Time\t\tElapsed Time\n\n");
+                print.append("Process PID\tProcess Name\tStatus\t\tStart Time\t\tEnd Time\t\tElapsed Time\n");
                 for (int i = 0; i < currentListIndex; ++i) {
                     for (int j = 0; j < 6; ++j) {
                         print.append(processList[i][j]).append("\t\t");
