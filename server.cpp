@@ -589,7 +589,7 @@ void *client(void *ptr) {
                 print.append(token).append(" ");
                 token = strtok(nullptr, " ");
             }
-            print.append("\n");
+            print.append("\n").append("Input next command\n");
             int read = sprintf(messageBuffer, "%s", print.c_str());
             write(STDOUT_FILENO, messageBuffer, read);
             write(msgsock, "Input next command\n", 19);
@@ -632,7 +632,7 @@ void *connection(void *ptr) {
                         print.append(token).append(" ");
                         token = strtok(nullptr, " ");
                     }
-                    print.append("\n");
+                    print.append("\n").append("Input next command\n");
                     int count = sprintf(output, "%s", print.c_str());
                     for (int i = 0; i <= currentClientIndex; ++i) {
                         if (strcmp(clientsList[i].status.c_str(), "Connected") == 0) {
@@ -693,7 +693,7 @@ void *connection(void *ptr) {
                                     print.append(token).append(" ");
                                     token = strtok(nullptr, " ");
                                 }
-                                print.append("\n");
+                                print.append("\n").append("Input next command\n");
                                 int count = sprintf(output, "%s", print.c_str());
                                 if (strcmp(clientsList[clientIndex].status.c_str(), "Connected") == 0) {
                                     int checkWrite = write(clientsList[clientIndex].writingEnd, output, count);
@@ -724,6 +724,7 @@ void *connection(void *ptr) {
                 }
             } else if (operation == 5) {
                 if (activeClients == 0) {
+                    close(msgsock);
                     exit(getpid());
                 } else {
                     for (int i = 0; i <= currentClientIndex; ++i) {
@@ -731,6 +732,7 @@ void *connection(void *ptr) {
                             int checkWrite = write(clientsList[i].writingEnd, "exit ", 5);
                         }
                     }
+                    close(msgsock);
                     exit(getpid());
                 }
             }
