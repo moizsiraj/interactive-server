@@ -92,6 +92,7 @@ int main() {
 
     createSock();
     listen(sock, 5);
+    write(STDOUT_FILENO,"Accepting Connections Now\n", 26);
     inputID = pthread_create(&inputThread, nullptr, connection, (void *) nullptr);
     struct sockaddr_in addr;
     socklen_t client_addr_size = sizeof(struct sockaddr_in);
@@ -100,6 +101,7 @@ int main() {
     while (true) {
         msgsock = accept(sock, (struct sockaddr *) &addr, &client_addr_size);
         if (msgsock != -1) {
+            write(STDOUT_FILENO, "Client Connected\n", 17);
             currentClientIndex++;
             activeClients++;
             int checkPipe = pipe(write2CH);
