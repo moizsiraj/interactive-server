@@ -21,6 +21,8 @@ void signal_handler_CH(int signo);
 
 void signal_handler_CONH(int signo);
 
+void signal_handler_CONHEXIT(int signo);
+
 bool checkFormat(char *input);
 
 std::string getTime();
@@ -80,6 +82,9 @@ struct clients clientsList[50];
 int main() {
 
     if (signal(SIGCHLD, signal_handler_CONH) == SIG_ERR) {
+        write(STDOUT_FILENO, "sig error", 9);
+    }
+    if (signal(SIGINT | SIGHUP, signal_handler_CONHEXIT) == SIG_ERR) {
         write(STDOUT_FILENO, "sig error", 9);
     }
     pthread_t inputThread;
@@ -437,6 +442,23 @@ void signal_handler_CONH(int signo) {
             if (pid != 0) {
                 updateClientList(pid);
             }
+        }
+    }
+}
+
+void signal_handler_CONHEXIT(int signo) {
+    if (signo == SIGINT || signo == SIGHUP) {
+        if (activeClients == 0) {
+            close(msgsock);
+            exit(getpid());
+        } else {
+            for (int i = 0; i <= currentClientIndex; ++i) {
+                if (strcmp(clientsList[i].status.c_str(), "Connected") == 0) {
+                    int checkWrite = write(clientsList[i].writingEnd, "exit ", 5);
+                }
+            }
+            close(msgsock);
+            exit(getpid());
         }
     }
 }
