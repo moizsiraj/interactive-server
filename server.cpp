@@ -704,7 +704,7 @@ void *connection(void *ptr) {
                     } else {
                         ipCheck = inet_pton(AF_INET, token, buf);
                         if (ipCheck <= 0) {
-                            write(STDOUT_FILENO, "No Client Connected\n", 20);
+                            write(STDOUT_FILENO, "Invalid IP\n", 20);
                         } else {
                             for (int i = 0; i <= currentClientIndex; ++i) {
                                 sscanf(clientsList[i].ip.c_str(), "%s", saveIP);
