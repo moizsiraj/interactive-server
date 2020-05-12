@@ -520,6 +520,7 @@ void *client(void *ptr) {
             bool invalidInput = false;
             double total = 0;
             getFirstNumber = false;
+            divZero = false;
             char checkInteger[10];
             token = strtok(nullptr, " ");
 
