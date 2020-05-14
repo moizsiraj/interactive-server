@@ -1,0 +1,37 @@
+Abdul Moiz Siraj
+14818
+
+running server:
+
+1. open terminal in the directory where server.ccp is stored.
+2. type ---- g++ -pthread -o s server.cpp ---- and enter, this would compile the code and generate a s.out file.
+3. type ---- ./s ---- and enter, this would run the file and start the server.
+4. server would give ip and port number for clients to connect.
+
+running client:
+
+1. open terminal in the directory where client.ccp is stored.
+2. type ---- g++ -pthread -o c client.cpp ---- and enter, this would compile the code and generate a c.out file.
+3. type ---- ./c <server ip> <server port> ---- and enter, this would run the file and start the client.
+
+server commands:
+
+1. print <client ip> <message> ---- sends and prints prints message to the client specified by the ip.
+2. print2all <message> ---- sends and prints message to all the active clients.
+3. clients ---- gives the list of all the clients.
+4. list ---- gives the list of processes run by active clients.
+5. exit ---- closes the server, all active clients and processes that were run by them.
+
+client commands:
+
+1. add <integers separated by spaces> ---- gives the sum of all the numbers.
+2. sub <integers separated by spaces> ---- 
+3. mul <integers separated by spaces> ---- gives the product of all the numbers.
+4. div <integers separated by spaces> ---- 
+5. run <process name> ---- runs given process on the server.
+6. run <process name> <file name> ---- runs given file on the given process on the server (if file exists it will open if not a file of that name will be created on server).
+7. kill <pid> ---- kills the process with given pid.
+8. kill <process name> ---- kiils the first running instance of the given process name.
+9. print <message> ---- sends and prints message to the server.
+10. exit ---- exits the client and kills all the running processes that the client has run on the server
+

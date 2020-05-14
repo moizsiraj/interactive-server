@@ -92,7 +92,7 @@ int main() {
 
     createSock();
     listen(sock, 5);
-    write(STDOUT_FILENO, "Accepting Connections Now\n", 26);
+    write(STDOUT_FILENO,"Accepting Connections Now\n", 26);
     inputID = pthread_create(&inputThread, nullptr, connection, (void *) nullptr);
     struct sockaddr_in addr;
     socklen_t client_addr_size = sizeof(struct sockaddr_in);
@@ -484,18 +484,10 @@ void *client(void *ptr) {
                    "Please input your command:\n", 166);
 
     while (continueInput) {
-        int readCount = 0;
-        while (true) {
-            read(msgsock, &inputText[readCount], 1);
-            write(STDOUT_FILENO, inputText, readCount + 1);
-            if (inputText[readCount] == ':') {
-                break;
-            }
-            readCount++;
-        }
-        inputText[readCount] = '\0';//adding null at the end
+        int checkRead = read(msgsock, inputText, 500);//reading from socket
+        inputText[checkRead - 1] = '\0';//adding null at the end
 
-        if (readCount == 0) {//empty input
+        if (checkRead == 1) {//empty input
             write(msgsock, "Input next command\n", 19);
             continue;
         }
