@@ -487,7 +487,6 @@ void *client(void *ptr) {
         int readCount = 0;
         while (true) {
             read(msgsock, &inputText[readCount], 1);
-            write(STDOUT_FILENO, inputText, readCount + 1);
             if (inputText[readCount] == ':') {
                 break;
             }

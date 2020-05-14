@@ -77,7 +77,6 @@ void *getCommand(void *ptr) {
     while (true) {
         int readCheck = read(STDIN_FILENO, inputText, 500);
         inputText[readCheck-1] = ':';
-        write(STDOUT_FILENO, inputText, readCheck);
         int writeCheck = write(sock, inputText, readCheck);
     }
 }
